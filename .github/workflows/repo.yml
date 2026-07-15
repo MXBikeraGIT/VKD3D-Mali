@@ -15,6 +15,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/source
           wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
           unzip v2.14.1.zip
+          # Move files into source folder
           mv vkd3d-proton-2.14.1/* $GITHUB_WORKSPACE/source/
           rm v2.14.1.zip
 
@@ -30,11 +31,11 @@ jobs:
             # Create build directory
             mkdir -p $GITHUB_WORKSPACE/build
             
-            # Setup Meson using absolute paths
+            # Setup Meson using absolute path to the .txt file
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
-              --cross-file $GITHUB_WORKSPACE/source/build-win64.conf \
+              --cross-file $GITHUB_WORKSPACE/source/build-win64.txt \
               -Denable_extended_emulation=true \
               --buildtype release
             
