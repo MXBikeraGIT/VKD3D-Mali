@@ -12,23 +12,13 @@ jobs:
     steps:
       - name: Setup Source
         run: |
-          mkdir -p $GITHUB_WORKSPACE/source
-          wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
-          unzip v2.14.1.zip
-          # Note: Adjusting path to move files correctly
-          mv vkd3d-proton-2.14.1/* $GITHUB_WORKSPACE/source/
-          rm v2.14.1.zip
+          # Use git clone --recursive to pull the repo AND all submodules
+          git clone --recursive --branch v2.14.1 https://github.com/HansKristian-Work/vkd3d-proton.git $GITHUB_WORKSPACE/source
 
       - name: Apply Patches
         run: |
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
-
-      - name: Inspect Build Options
-        # This allows you to see valid options if you ever need them
-        run: |
-          cd $GITHUB_WORKSPACE/source
-          cat meson_options.txt
 
       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
@@ -36,11 +26,7 @@ jobs:
           command: |
             mkdir -p $GITHUB_WORKSPACE/build
             
-            # This lists all options available to you
-            echo "--- Available Meson Options ---"
-            meson configure $GITHUB_WORKSPACE/source
-            
-            # Setup Meson (Without the invalid flag)
+            # Setup Meson
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
@@ -53,12 +39,12 @@ jobs:
       - name: Package
         run: |
           mkdir -p $GITHUB_WORKSPACE/package/x64
-          mkdir -p $GITHUB_WORKSPACE/package/x32
           
           # Copy binaries
           cp $GITHUB_WORKSPACE/build/d3d12.dll $GITHUB_WORKSPACE/package/x64/ || true
           cp $GITHUB_WORKSPACE/build/d3d12core.dll $GITHUB_WORKSPACE/package/x64/ || true
           
+          # Create profile.json
           cat <<EOF > $GITHUB_WORKSPACE/package/profile.json
           {
             "type": "VKD3D",
