@@ -12,36 +12,46 @@ jobs:
     steps:
       - name: Setup Source
         run: |
+          mkdir -p $GITHUB_WORKSPACE/source
           wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
           unzip v2.14.1.zip
-          mv vkd3d-proton-2.14.1 source
+          mv vkd3d-proton-2.14.1/* $GITHUB_WORKSPACE/source/
+          rm v2.14.1.zip
 
       - name: Apply Patches
         run: |
-          sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' source/libs/vkd3d/command.c
-          sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' source/libs/vkd3d/device.c
+          sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
+          sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
 
       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
         with:
           command: |
-            cd source
-            meson setup build --cross-file build-win64.conf -Denable_extended_emulation=true --buildtype release
-            ninja -C build
+            # Create build directory
+            mkdir -p $GITHUB_WORKSPACE/build
+            
+            # Setup Meson using absolute paths
+            meson setup \
+              $GITHUB_WORKSPACE/build \
+              $GITHUB_WORKSPACE/source \
+              --cross-file $GITHUB_WORKSPACE/source/build-win64.conf \
+              -Denable_extended_emulation=true \
+              --buildtype release
+            
+            # Compile
+            ninja -C $GITHUB_WORKSPACE/build
 
       - name: Package
         run: |
-          mkdir -p package/x64
-          mkdir -p package/x32
+          mkdir -p $GITHUB_WORKSPACE/package/x64
+          mkdir -p $GITHUB_WORKSPACE/package/x32
           
-          # Copying binaries from source/build/
-          # Note: vkd3d-proton build often places binaries in the root of the build dir 
-          # or specific subdirs depending on the cross-compiler architecture.
-          # If this path fails, check your build logs for the exact file location.
-          cp source/build/d3d12.dll package/x64/ || true
-          cp source/build/d3d12core.dll package/x64/ || true
+          # Copy binaries from the build directory
+          cp $GITHUB_WORKSPACE/build/d3d12.dll $GITHUB_WORKSPACE/package/x64/ || true
+          cp $GITHUB_WORKSPACE/build/d3d12core.dll $GITHUB_WORKSPACE/package/x64/ || true
           
-          cat <<EOF > package/profile.json
+          # Generate profile.json
+          cat <<EOF > $GITHUB_WORKSPACE/package/profile.json
           {
             "type": "VKD3D",
             "versionName": "2.14.1",
@@ -54,9 +64,11 @@ jobs:
           }
           EOF
           
-          tar -cvf VKD3D-Mali.tar -C package .
+          # Compress
+          cd $GITHUB_WORKSPACE/package
+          tar -cvf VKD3D-Mali.tar .
           xz VKD3D-Mali.tar
-          mv VKD3D-Mali.tar.xz VKD3D-Mali.wcp.xz
+          mv VKD3D-Mali.tar.xz $GITHUB_WORKSPACE/VKD3D-Mali.wcp.xz
 
       - name: Upload
         uses: actions/upload-artifact@v4
