@@ -15,7 +15,7 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/source
           wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
           unzip v2.14.1.zip
-          # Move files into source folder
+          # Note: Adjusting path to move files correctly
           mv vkd3d-proton-2.14.1/* $GITHUB_WORKSPACE/source/
           rm v2.14.1.zip
 
@@ -24,22 +24,22 @@ jobs:
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
 
+      - name: Inspect Build Options
+        # This allows you to see valid options if you ever need them
+        run: |
+          cd $GITHUB_WORKSPACE/source
+          cat meson_options.txt
+
       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
         with:
           command: |
-            # Create build directory
             mkdir -p $GITHUB_WORKSPACE/build
-            
-            # Setup Meson using absolute path to the .txt file
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
               --cross-file $GITHUB_WORKSPACE/source/build-win64.txt \
-              -Denable_extended_emulation=true \
               --buildtype release
-            
-            # Compile
             ninja -C $GITHUB_WORKSPACE/build
 
       - name: Package
@@ -47,11 +47,10 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/package/x64
           mkdir -p $GITHUB_WORKSPACE/package/x32
           
-          # Copy binaries from the build directory
+          # Copy binaries
           cp $GITHUB_WORKSPACE/build/d3d12.dll $GITHUB_WORKSPACE/package/x64/ || true
           cp $GITHUB_WORKSPACE/build/d3d12core.dll $GITHUB_WORKSPACE/package/x64/ || true
           
-          # Generate profile.json
           cat <<EOF > $GITHUB_WORKSPACE/package/profile.json
           {
             "type": "VKD3D",
@@ -65,7 +64,6 @@ jobs:
           }
           EOF
           
-          # Compress
           cd $GITHUB_WORKSPACE/package
           tar -cvf VKD3D-Mali.tar .
           xz VKD3D-Mali.tar
