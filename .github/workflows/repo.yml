@@ -35,11 +35,19 @@ jobs:
         with:
           command: |
             mkdir -p $GITHUB_WORKSPACE/build
+            
+            # This lists all options available to you
+            echo "--- Available Meson Options ---"
+            meson configure $GITHUB_WORKSPACE/source
+            
+            # Setup Meson (Without the invalid flag)
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
               --cross-file $GITHUB_WORKSPACE/source/build-win64.txt \
               --buildtype release
+            
+            # Compile
             ninja -C $GITHUB_WORKSPACE/build
 
       - name: Package
