@@ -20,21 +20,26 @@ jobs:
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
 
-      - name: Build
+       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
         with:
           command: |
             mkdir -p $GITHUB_WORKSPACE/build
             
-            # Setup Meson
+            # 1. Setup Meson
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
               --cross-file $GITHUB_WORKSPACE/source/build-win64.txt \
               --buildtype release
             
-            # Compile
+            # 2. Patch the problematic build header immediately after generation
+            # This forces the build to use a valid integer instead of the broken version string
+            echo 'static const uint64_t vkd3d_build = 0;' > $GITHUB_WORKSPACE/build/vkd3d_build.h
+            
+            # 3. Compile
             ninja -C $GITHUB_WORKSPACE/build
+
 
       - name: Package
         run: |
