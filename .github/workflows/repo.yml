@@ -20,7 +20,7 @@ jobs:
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
 
-       - name: Build
+      - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
         with:
           command: |
@@ -39,7 +39,6 @@ jobs:
             
             # 3. Compile
             ninja -C $GITHUB_WORKSPACE/build
-
 
       - name: Package
         run: |
