@@ -17,15 +17,16 @@ jobs:
 
       - name: Apply Patches
         run: |
-          # Patch command.c
+          # Patch command.c for Mali compatibility
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
           
-          # Patch device.c
+          # Patch device.c for Mali compatibility
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
           
-          # FIX: Patch the build header template so the generated header is correct
-          # This replaces the line that causes the "too many decimal points" error
-          sed -i 's/static const uint64_t vkd3d_build = .*/static const uint64_t vkd3d_build = 0;/g' $GITHUB_WORKSPACE/source/libs/vkd3d/vkd3d_build.h.in
+          # FIX: Patch the build header template files so the generated header is syntactically valid
+          # This forces the build to use a safe integer '0' instead of the broken version string injection
+          sed -i 's/static const uint64_t vkd3d_build = .*/static const uint64_t vkd3d_build = 0;/g' $GITHUB_WORKSPACE/source/vkd3d_build.h.in || true
+          sed -i 's/static const uint64_t vkd3d_build = .*/static const uint64_t vkd3d_build = 0;/g' $GITHUB_WORKSPACE/source/libs/vkd3d/vkd3d_build.h.in || true
 
       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
@@ -33,18 +34,14 @@ jobs:
           command: |
             mkdir -p $GITHUB_WORKSPACE/build
             
-            # 1. Setup Meson
+            # Setup Meson
             meson setup \
               $GITHUB_WORKSPACE/build \
               $GITHUB_WORKSPACE/source \
               --cross-file $GITHUB_WORKSPACE/source/build-win64.txt \
               --buildtype release
             
-            # 2. Patch the problematic build header immediately after generation
-            # This forces the build to use a valid integer instead of the broken version string
-            echo 'static const uint64_t vkd3d_build = 0;' > $GITHUB_WORKSPACE/build/vkd3d_build.h
-            
-            # 3. Compile
+            # Compile
             ninja -C $GITHUB_WORKSPACE/build
 
       - name: Package
