@@ -10,7 +10,7 @@ jobs:
   build-vkd3d:
     runs-on: ubuntu-24.04
     steps:
-      - name: Setup Build Environment
+      - name: Setup Source
         run: |
           wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
           unzip v2.14.1.zip
@@ -21,7 +21,7 @@ jobs:
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' source/libs/vkd3d/command.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' source/libs/vkd3d/device.c
 
-         - name: Build
+      - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
         with:
           command: |
@@ -34,11 +34,12 @@ jobs:
           mkdir -p package/x64
           mkdir -p package/x32
           
-          # Copy from the build directory inside source
+          # Copying binaries from source/build/
+          # Note: vkd3d-proton build often places binaries in the root of the build dir 
+          # or specific subdirs depending on the cross-compiler architecture.
+          # If this path fails, check your build logs for the exact file location.
           cp source/build/d3d12.dll package/x64/ || true
           cp source/build/d3d12core.dll package/x64/ || true
-          # Note: If vkd3d-proton produces x86/x64 subfolders, adjust accordingly:
-          # cp source/build/x64/d3d12.dll package/x64/ || true
           
           cat <<EOF > package/profile.json
           {
@@ -56,3 +57,10 @@ jobs:
           tar -cvf VKD3D-Mali.tar -C package .
           xz VKD3D-Mali.tar
           mv VKD3D-Mali.tar.xz VKD3D-Mali.wcp.xz
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: VKD3D-Mali
+          path: VKD3D-Mali.wcp.xz
+          if-no-files-found: error
