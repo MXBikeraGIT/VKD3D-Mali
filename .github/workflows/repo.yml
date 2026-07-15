@@ -1,0 +1,44 @@
+name: Update Source to v2.14.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-repo:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download and Extract
+        run: |
+          # Download
+          wget https://github.com/HansKristian-Work/vkd3d-proton/archive/refs/tags/v2.14.1.zip
+          unzip v2.14.1.zip
+          
+          # Move contents to root
+          # Note: We use 'cp' instead of 'mv' to be safe
+          cp -r vkd3d-proton-2.14.1/* .
+          cp -r vkd3d-proton-2.14.1/.* . 2>/dev/null || true
+          
+          # Cleanup
+          rm -rf vkd3d-proton-2.14.1 v2.14.1.zip
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Add the new files
+          git add .
+          
+          # Commit only if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update vkd3d-proton source to v2.14.1"
+            git push
+          fi
