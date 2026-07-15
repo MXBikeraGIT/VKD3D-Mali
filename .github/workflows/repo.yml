@@ -17,8 +17,15 @@ jobs:
 
       - name: Apply Patches
         run: |
+          # Patch command.c
           sed -i '/descriptor_write_count += 2;/a if (descriptor_write_count) { if (list->device->vk_info.KHR_push_descriptor) { VK_CALL(vkCmdPushDescriptorSetKHR(list->cmd.vk_command_buffer, vk_bind_point, layout, root_signature->root_descriptor_set, descriptor_write_count, descriptor_writes)); } }' $GITHUB_WORKSPACE/source/libs/vkd3d/command.c
+          
+          # Patch device.c
           sed -i '/return VKD3D_ERROR_NOT_SUPPORTED;/d' $GITHUB_WORKSPACE/source/libs/vkd3d/device.c
+          
+          # FIX: Patch the build header template so the generated header is correct
+          # This replaces the line that causes the "too many decimal points" error
+          sed -i 's/static const uint64_t vkd3d_build = .*/static const uint64_t vkd3d_build = 0;/g' $GITHUB_WORKSPACE/source/libs/vkd3d/vkd3d_build.h.in
 
       - name: Build
         uses: misyltoad/arch-mingw-github-action@v8
